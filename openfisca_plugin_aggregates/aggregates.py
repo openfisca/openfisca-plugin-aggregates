@@ -195,8 +195,7 @@ class Aggregates(object):
         variable : string
                    name of the variable aggregated according to its entity  
         """
-        
-        country = self.simulation.country
+
         WEIGHT = model.WEIGHT
         simulation = self.simulation
 
@@ -290,8 +289,6 @@ class Aggregates(object):
         if year is None:
             year     = self.simulation.datesim.year
         if filename is None:
-            country = self.simulation.country
-
             data_dir = model.DATA_DIR
 
 
