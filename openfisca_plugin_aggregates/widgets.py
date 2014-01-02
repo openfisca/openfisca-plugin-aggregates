@@ -34,6 +34,8 @@ from openfisca_qt.gui.utils.qthelpers import add_actions, create_action
 from openfisca_qt.plugins import OpenfiscaPluginWidget, PluginConfigPage
 from pandas import ExcelWriter
 
+from .aggregates import Aggregates
+
 
 _ = get_translation('openfisca_qt')
 
