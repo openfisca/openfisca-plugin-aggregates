@@ -153,7 +153,7 @@ class AggregatesWidget(OpenfiscaPluginWidget):
         if self.aggregates.aggr_frame is None:
             return
 
-        cols = [self.aggregates.labels[code] for code in self.aggregates.labels_ordered_list]
+        cols = self.aggregates.labels.values()
 
         labels = self.aggregates.labels
 

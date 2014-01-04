@@ -25,6 +25,7 @@
 
 from __future__ import division
 
+import collections
 from datetime import datetime
 import os
 
@@ -38,17 +39,26 @@ class Aggregates(object):
     data = None
     data_default = None
     filter_by = None
+    labels = collections.OrderedDict((
+        ('var', u"Mesure"),
+        ('entity', u"Entité"),
+        ('dep', u"Dépenses\n(millions d'€)"),
+        ('benef', u"Bénéficiaires\n(milliers)"),
+        ('dep_default', u"Dépenses initiales\n(millions d'€)"),
+        ('benef_default', u"Bénéficiaires\ninitiaux\n(milliers)"),
+        ('dep_real', u"Dépenses\nréelles\n(millions d'€)"),
+        ('benef_real', u"Bénéficiaires\nréels\n(milliers)"),
+        ('dep_diff_abs', u"Diff. absolue\nDépenses\n(millions d'€)"),
+        ('benef_diff_abs', u"Diff absolue\nBénéficiaires\n(milliers)"),
+        ('dep_diff_rel', u"Diff. relative\nDépenses"),
+        ('benef_diff_rel', u"Diff. relative\nBénéficiaires"),
+        ))
     show_default = False
     show_diff = True
     show_real = True
     simulation = None
     totals_df = None
     varlist = None
-
-    def __init__(self):
-        super(Aggregates, self).__init__()
-
-        self.set_header_labels()
 
     def set_var_list(self, var_list):
         """
@@ -82,28 +92,6 @@ class Aggregates(object):
         self.set_default_filter_by_list()
         varname = self.filter_by_var_list[0]
         self.set_filter_by(varname)
-
-    def set_header_labels(self):
-        '''
-        Sets headers labels
-        '''
-        labels = dict()
-        labels['var']    = u"Mesure"
-        labels['entity'] = u"Entité"
-        labels['dep']    = u"Dépenses \n(millions d'€)"
-        labels['benef']  = u"Bénéficiaires \n(milliers)"
-        labels['dep_default']   = u"Dépenses initiales \n(millions d'€)"
-        labels['benef_default'] = u"Bénéficiaires \ninitiaux \n(milliers)"
-        labels['dep_real']      = u"Dépenses \nréelles \n(millions d'€)"
-        labels['benef_real']    = u"Bénéficiaires \nréels \n(milliers)"
-        labels['dep_diff_abs']      = u"Diff. absolue \nDépenses \n(millions d'€) "
-        labels['benef_diff_abs']    = u"Diff absolue \nBénéficiaires \n(milliers)"
-        labels['dep_diff_rel']      = u"Diff. relative \nDépenses"
-        labels['benef_diff_rel']    = u"Diff. relative \nBénéficiaires"
-        self.labels = labels
-        self.labels_ordered_list = ['var', 'entity', 'dep', 'benef', 'dep_default', 'benef_default',
-                                    'dep_real', 'benef_real', 'dep_diff_abs', 'benef_diff_abs',
-                                    'dep_diff_rel', 'benef_diff_rel']
 
     def set_simulation(self, simulation):
 
@@ -173,9 +161,9 @@ class Aggregates(object):
         aggr_frame = DataFrame.from_items(items)
 
         self.aggr_frame = None
-        for code in self.labels_ordered_list:
+        for code, label in self.labels.iteritems():
             try:
-                col = aggr_frame[self.labels[code]]
+                col = aggr_frame[label]
                 if self.aggr_frame is None:
                     self.aggr_frame = DataFrame(col)
                 else:
