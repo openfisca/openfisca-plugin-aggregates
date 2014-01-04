@@ -60,47 +60,16 @@ class Aggregates(object):
     totals_df = None
     varlist = None
 
-    def set_var_list(self, var_list):
-        """
-        Set list of variables to be aggregated
-        """
-        self.varlist = var_list
-
-    def set_filter_by(self, varname):
-        """
-        Set the variable to filter by the amounts and beneficiaries that are
-        to be taken into account
-        """
-        self.filter_by = varname
-
-    def set_default_var_list(self):
-        """
-        Set list of variables to be aggregated
-        """
-        self.varlist = model.AGGREGATES_DEFAULT_VARS
-
-    def set_default_filter_by_list(self):
-        """
-        Import country specific default filter by variables list
-        """
-        self.filter_by_var_list = model.FILTERING_VARS
-
-    def set_default_filter_by(self):
-        """
-        Set country specific default filter by variable
-        """
-        self.set_default_filter_by_list()
-        varname = self.filter_by_var_list[0]
-        self.set_filter_by(varname)
-
     def set_simulation(self, simulation):
 
         if isinstance(simulation, SurveySimulation):
             self.simulation = simulation
         else:
             raise Exception('Aggregates:  %s should be an instance of %s class'  %(simulation, SurveySimulation))
-        self.set_default_var_list()
-        self.set_default_filter_by()
+        self.varlist = model.AGGREGATES_DEFAULT_VARS
+        self.filter_by_var_list = model.FILTERING_VARS
+        varname = self.filter_by_var_list[0]
+        self.filter_by = varname
 
     def compute(self):
         """
