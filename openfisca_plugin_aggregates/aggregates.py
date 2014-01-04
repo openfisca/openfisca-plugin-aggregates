@@ -234,9 +234,6 @@ class Aggregates(object):
 
         return aggregate(variable, filter_by)
 
-    def get_aggregates(self, variable):
-        self.aggr_frame
-
     def load_amounts_from_file(self, filename = None, year = None):
         '''
         Loads totals from files
