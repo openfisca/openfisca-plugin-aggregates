@@ -301,7 +301,6 @@ class AggregatesWidget(OpenfiscaPluginWidget):
 
         self.aggregates = agg
         self.survey_year = self.aggregates.simulation.input_table.survey_year
-        self.description = self.aggregates.simulation.output_table.description
 
         self.select_menu = QMenu()
         action_dep = create_action(self, u"Dépenses",

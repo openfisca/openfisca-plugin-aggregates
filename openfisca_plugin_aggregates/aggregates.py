@@ -95,7 +95,7 @@ class Aggregates(object):
         for var in self.varlist:
             # amounts and beneficiaries from current data and default data if exists
             montant_benef = self.get_aggregate(var, filter_by)
-            V.append(simulation.var2label[var])
+            V.append(simulation.io_column_by_name[var].label)
             try:
                 varcol = simulation.get_col(var)
                 entity = varcol.entity
@@ -194,45 +194,39 @@ class Aggregates(object):
         variable : string
                    name of the variable aggregated according to its entity
         """
-
-        WEIGHT = model.WEIGHT
         simulation = self.simulation
 
-        def aggregate(var, filter_by):  # TODO: should be a method of Presta
-            varcol = simulation.get_col(var)
-            entity = varcol.entity
-            # amounts and beneficiaries from current data and default data if exists
-            data, data_default = simulation.aggregated_by_entity(entity, [var], all_output_vars = False,
-                force_sum = True)
+        varcol = simulation.get_col(variable)
+        entity = varcol.entity
+        # amounts and beneficiaries from current data and default data if exists
+        data, data_default = simulation.aggregated_by_entity(entity, [variable], all_output_vars = False,
+            force_sum = True)
 
-            filter = 1
-            if filter_by is not None:
-                data_filter, data_default_filter = simulation.aggregated_by_entity(entity, [filter_by],
-                    all_output_vars = False, force_sum = True)
-                filter = data_filter[filter_by]
-            datasets = {'data': data}
-            m_b = {}
-            weight = data[WEIGHT] * filter
-            if data_default is not None:
-                datasets['default'] = data_default
+        datasets = {'data': data}
+        if data_default is not None:
+            datasets['default'] = data_default
+        filter = 1
+        if filter_by is not None:
+            data_filter, data_default_filter = simulation.aggregated_by_entity(entity, [filter_by],
+                all_output_vars = False, force_sum = True)
+            filter = data_filter[filter_by]
+        m_b = {}
+        weight = data[model.WEIGHT] * filter
+        for name, data in datasets.iteritems():
+            montants = data[variable]
+            beneficiaires = data[variable].values != 0
+            try:
+                amount = int(round(sum(montants * weight) / 10 ** 6))
+            except:
+                amount = nan
+            try:
+                benef = int(round(sum(beneficiaires * weight) / 10 ** 3))
+            except:
+                benef = nan
 
-            for name, data in datasets.iteritems():
-                montants = data[var]
-                beneficiaires = data[var].values != 0
-                try:
-                    amount = int(round(sum(montants * weight) / 10 ** 6))
-                except:
-                    amount = nan
-                try:
-                    benef = int(round(sum(beneficiaires * weight) / 10 ** 3))
-                except:
-                    benef = nan
+            m_b[name] = [amount, benef]
 
-                m_b[name] = [amount, benef]
-
-            return m_b
-
-        return aggregate(variable, filter_by)
+        return m_b
 
     def load_amounts_from_file(self, filename = None, year = None):
         '''
