@@ -49,8 +49,10 @@ class AggregatesConfigPage(PluginConfigPage):
 
         export_group = QGroupBox(_("Export"))
         export_dir = self.create_browsedir(_("Export directory"), "table/export_dir")
-        choices = [('cvs', 'csv'),
-                   ('xls', 'xls'),]
+        choices = [
+            ('cvs', 'csv'),
+            ('xls', 'xls'),
+            ]
         table_format = self.create_combobox(_('Table export format'), choices, 'table/format')
         export_layout = QVBoxLayout()
         export_layout.addWidget(export_dir)
@@ -74,8 +76,7 @@ class AggregatesConfigPage(PluginConfigPage):
                                         'show_default')
 
         variables_layout = QVBoxLayout()
-        for combo in [show_dep, show_benef, show_real, show_diff, show_diff_abs,
-                       show_diff_rel, show_default]:
+        for combo in [show_dep, show_benef, show_real, show_diff, show_diff_abs, show_diff_rel, show_default]:
             variables_layout.addWidget(combo)
         variables_group.setLayout(variables_layout)
 
@@ -107,7 +108,7 @@ class AggregatesWidget(OpenfiscaPluginWidget):
         headers = self.view.horizontalHeader()
         self.headers = headers
         headers.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.connect(self.headers,SIGNAL('customContextMenuRequested(QPoint)'), self.ctx_select_menu)
+        self.connect(self.headers, SIGNAL('customContextMenuRequested(QPoint)'), self.ctx_select_menu)
         verticalLayout = QVBoxLayout(self.dockWidgetContents)
         verticalLayout.addWidget(self.view)
         self.setLayout(verticalLayout)
@@ -136,15 +137,12 @@ class AggregatesWidget(OpenfiscaPluginWidget):
             self.show_default = True
 
     def ctx_select_menu(self, point):
-        self.select_menu.exec_( self.headers.mapToGlobal(point) )
-
+        self.select_menu.exec_(self.headers.mapToGlobal(point))
 
     def toggle_option(self, option, boolean):
         self.set_option(option, boolean)
         self.show_dep = boolean
         self.update_view()
-
-
 
     def update_view(self):
         '''
@@ -165,7 +163,7 @@ class AggregatesWidget(OpenfiscaPluginWidget):
             cols.remove(labels['dep_default'])
             cols.remove(labels['benef_default'])
 
-        remove_all_diffs =  not (self.aggregates.show_real or self.aggregates.show_default)
+        remove_all_diffs = not (self.aggregates.show_real or self.aggregates.show_default)
         if not remove_all_diffs:
             self.aggregates.compute_diff()
 
@@ -196,8 +194,7 @@ class AggregatesWidget(OpenfiscaPluginWidget):
 
         self.view.set_dataframe(self.aggregates.aggr_frame[cols])
         self.view.resizeColumnsToContents()
-        self.view.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-
+        self.view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
     def calculated(self):
         '''
@@ -205,10 +202,8 @@ class AggregatesWidget(OpenfiscaPluginWidget):
         '''
         self.emit(SIGNAL('calculated()'))
 
-
     def clear(self):
         self.view.clear()
-
 
     def save_table(self, table_format = None, float_format = "%.2f"):
         '''
@@ -222,9 +217,8 @@ class AggregatesWidget(OpenfiscaPluginWidget):
         user_path = os.path.join(output_dir, filename)
 
         extension = table_format.upper() + "   (*." + table_format + ")"
-        fname = QFileDialog.getSaveFileName(self,
-                                               _("Save table"), #"Exporter la table",
-                                               user_path, extension)
+        fname = QFileDialog.getSaveFileName(self, _("Save table"),  # "Exporter la table",
+            user_path, extension)
 
         if fname:
             self.set_option('table/export_dir', os.path.dirname(str(fname)))
@@ -236,10 +230,8 @@ class AggregatesWidget(OpenfiscaPluginWidget):
                     descr = self.create_description()
                     descr.to_excel(writer, "description", index = False, header=False)
                     writer.save()
-                elif table_format =="csv":
+                elif table_format == "csv":
                     df.to_csv(writer, "aggregates", index= False, header = True, float_format = float_format)
-
-
             except Exception, e:
                 QMessageBox.critical(
                     self, "Error saving file", str(e),
@@ -258,8 +250,6 @@ class AggregatesWidget(OpenfiscaPluginWidget):
             if option in show_options:
                 self.toggle_option(option, self.get_option(option))
 
-#        if option is
-
     #------ OpenfiscaPluginWidget API ---------------------------------------------
 
     def get_plugin_title(self):
@@ -269,7 +259,6 @@ class AggregatesWidget(OpenfiscaPluginWidget):
         is more flexible here than using a class attribute
         """
         return "Aggregates"
-
 
     def get_plugin_icon(self):
         """
@@ -322,7 +311,7 @@ class AggregatesWidget(OpenfiscaPluginWidget):
 
         if self.aggregates.simulation.reforme is False:
             self.set_option('show_default', False)
-            if self.aggregates.totals_df is not None: # real available
+            if self.aggregates.totals_df is not None:  # real available
                 actions.append(action_real)
                 actions.append(action_diff_abs)
                 actions.append(action_diff_rel)
@@ -351,7 +340,6 @@ class AggregatesWidget(OpenfiscaPluginWidget):
         self.calculated()
         self.ending_long_process(_("Aggregates table updated"))
 
-
     def closing_plugin(self, cancelable=False):
         """
         Perform actions before parent main window is closed
@@ -359,4 +347,3 @@ class AggregatesWidget(OpenfiscaPluginWidget):
         Note: returned value is ignored if *cancelable* is False
         """
         return True
-
