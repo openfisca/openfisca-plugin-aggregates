@@ -36,8 +36,6 @@ from pandas import DataFrame, ExcelWriter
 
 
 class Aggregates(object):
-    data = None
-    data_default = None
     filter_by = None
     labels = collections.OrderedDict((
         ('var', u"Mesure"),
@@ -61,8 +59,6 @@ class Aggregates(object):
     varlist = None
 
     def clear(self):
-        self.data = None
-        self.data_default = None
         self.totals_df = None
 
     def compute(self):
