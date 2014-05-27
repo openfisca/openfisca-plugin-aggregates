@@ -30,9 +30,9 @@ from datetime import datetime
 import os
 
 from numpy import nan
-from openfisca_core import model
-from openfisca_core.simulations import SurveySimulation
 from pandas import DataFrame, ExcelWriter
+
+from openfisca_france_data import AGGREGATES_DEFAULT_VARS, FILTERING_VARS, WEIGHT
 
 
 class Aggregates(object):
@@ -54,7 +54,7 @@ class Aggregates(object):
     show_default = False
     show_diff = True
     show_real = True
-    simulation = None
+    survey_scenario = None
     totals_df = None
     varlist = None
 
@@ -74,9 +74,7 @@ class Aggregates(object):
         """
         Compute aggregate amounts
         """
-        if self.simulation.output_table is None:
-            raise Exception("No output_table found for the current survey_simulation")
-
+        column_by_name = self.simulation.tax_benefit_system.column_by_name
         V = []
         M = {'data': [], 'default': []}
         B = {'data': [], 'default': []}
@@ -87,16 +85,11 @@ class Aggregates(object):
         B_label = {'data': self.labels['benef'],
                    'default': self.labels['benef_default']}
 
-        simulation = self.simulation
         for var in self.varlist:
             # amounts and beneficiaries from current data and default data if exists
             montant_benef = self.get_aggregate(var, filter_by)
-            V.append(simulation.io_column_by_name[var].label)
-            try:
-                varcol = simulation.get_col(var)
-                entity = varcol.entity
-            except:
-                entity = 'NA'
+            V.append(column_by_name[var].label)
+            entity = column_by_name[var].entity
 
             U.append(entity)
             for dataname in montant_benef:
@@ -180,7 +173,7 @@ class Aggregates(object):
             u"Données d'enquêtes de l'année %s" % str(self.simulation.input_table.survey_year),
             ])
 
-    def get_aggregate(self, variable, filter_by=None):
+    def get_aggregate(self, variable, filter_by = None):
         """
         Returns aggregate spending, and number of beneficiaries
         for the relevant entity level
@@ -191,36 +184,48 @@ class Aggregates(object):
                    name of the variable aggregated according to its entity
         """
         simulation = self.simulation
-
-        varcol = simulation.get_col(variable)
-        entity = varcol.entity
+        column_by_name = self.simulation.tax_benefit_system.column_by_name
+        column = column_by_name[variable]
+        weight_name = self.weight_column_name_by_entity_symbol[column.entity]
         # amounts and beneficiaries from current data and default data if exists
-        data, data_default = simulation.aggregated_by_entity(entity, [variable], all_output_vars = False,
-            force_sum = True)
+        # Build weights for each entity
+        data = DataFrame(
+            {
+                variable: simulation.calculate(variable),
+                weight_name: simulation.calculate(weight_name),
+                }
+            )
+        data_default = None
 
         datasets = {'data': data}
         if data_default is not None:
             datasets['default'] = data_default
         filter = 1
-        if filter_by is not None:
-            data_filter, data_default_filter = simulation.aggregated_by_entity(entity, [filter_by],
-                all_output_vars = False, force_sum = True)
+        if filter_by:  # TODO: insert filter_by
+            data_filter = DataFrame(
+                {
+                    variable: simulation.calculate(variable),
+                    weight_name: simulation.calculate(weight_name),
+                    }
+                )
+            data_default = None
             filter = data_filter[filter_by]
         m_b = {}
-        weight = data[model.WEIGHT] * filter
-        for name, data in datasets.iteritems():
-            montants = data[variable]
-            beneficiaires = data[variable].values != 0
-            try:
-                amount = int(round(sum(montants * weight) / 10 ** 6))
-            except:
-                amount = nan
-            try:
-                benef = int(round(sum(beneficiaires * weight) / 10 ** 3))
-            except:
-                benef = nan
 
-            m_b[name] = [amount, benef]
+        weight = data[weight_name] * filter
+        for name, data in datasets.iteritems():
+            amount = data[variable]
+            benef = data[variable].values != 0
+            try:
+                total_amount = int(round(sum(amount * weight) / 10 ** 6))
+            except:
+                total_amount = nan
+            try:
+                total_benef = int(round(sum(benef * weight) / 10 ** 3))
+            except:
+                total_benef = nan
+
+            m_b[name] = [total_amount, total_benef]
 
         return m_b
 
@@ -309,11 +314,10 @@ class Aggregates(object):
         except Exception, e:
                 raise Exception("Aggregates: Error saving file", str(e))
 
-    def set_simulation(self, simulation):
-        assert isinstance(simulation, SurveySimulation), 'Aggregates:  %s should be an instance of %s class' % (
-            simulation, SurveySimulation)
-        self.simulation = simulation
-        self.varlist = model.AGGREGATES_DEFAULT_VARS
-        self.filter_by_var_list = model.FILTERING_VARS
+    def set_survey_scenario(self, survey_scenario, debug = False, debug_all = False, trace = False):
+        self.simulation = survey_scenario.new_simulation(debug = debug, debug_all = debug_all, trace = debug_all)
+        self.weight_column_name_by_entity_symbol = survey_scenario.weight_column_name_by_entity_symbol
+        self.varlist = AGGREGATES_DEFAULT_VARS
+        self.filter_by_var_list = FILTERING_VARS
         varname = self.filter_by_var_list[0]
         self.filter_by = varname
