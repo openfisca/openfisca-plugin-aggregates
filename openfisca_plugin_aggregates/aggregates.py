@@ -30,9 +30,11 @@ from datetime import datetime
 import os
 
 from numpy import nan
-from pandas import DataFrame, ExcelWriter
+from pandas import DataFrame, ExcelWriter, HDFStore
 
-from openfisca_france_data import AGGREGATES_DEFAULT_VARS, FILTERING_VARS, WEIGHT
+from openfisca_france_data import AGGREGATES_DEFAULT_VARS, FILTERING_VARS, PLUGINS_DIR
+
+DATA_DIR = os.path.join(PLUGINS_DIR, 'aggregates')
 
 
 class Aggregates(object):
@@ -187,6 +189,7 @@ class Aggregates(object):
         column_by_name = self.simulation.tax_benefit_system.column_by_name
         column = column_by_name[variable]
         weight_name = self.weight_column_name_by_entity_symbol[column.entity]
+        filter_by_name = "{}_{}".format(filter_by, column.entity)
         # amounts and beneficiaries from current data and default data if exists
         # Build weights for each entity
         data = DataFrame(
@@ -200,19 +203,20 @@ class Aggregates(object):
         datasets = {'data': data}
         if data_default is not None:
             datasets['default'] = data_default
-        filter = 1
-        if filter_by:  # TODO: insert filter_by
-            data_filter = DataFrame(
+        filter_indicator = True
+        if filter_by:
+            filtered_data = DataFrame(
                 {
                     variable: simulation.calculate(variable),
                     weight_name: simulation.calculate(weight_name),
+                    filter_by_name: simulation.calculate(filter_by_name),
                     }
                 )
             data_default = None
-            filter = data_filter[filter_by]
+            filter_indicator = filtered_data[filter_by_name]
         m_b = {}
 
-        weight = data[weight_name] * filter
+        weight = data[weight_name] * filter_indicator
         for name, data in datasets.iteritems():
             amount = data[variable]
             benef = data[variable].values != 0
@@ -233,11 +237,10 @@ class Aggregates(object):
         '''
         Loads totals from files
         '''
-        from pandas import HDFStore
         if year is None:
-            year = self.simulation.datesim.year
+            year = self.year
         if filename is None:
-            data_dir = model.DATA_DIR
+            data_dir = DATA_DIR
 
         try:
             filename = os.path.join(data_dir, "amounts.h5")
@@ -315,7 +318,11 @@ class Aggregates(object):
                 raise Exception("Aggregates: Error saving file", str(e))
 
     def set_survey_scenario(self, survey_scenario, debug = False, debug_all = False, trace = False):
-        self.simulation = survey_scenario.new_simulation(debug = debug, debug_all = debug_all, trace = debug_all)
+        self.year = survey_scenario.year
+        if survey_scenario.simulation is None:
+            self.simulation = survey_scenario.new_simulation(debug = debug, debug_all = debug_all, trace = debug_all)
+        else:
+            self.simulation = survey_scenario.simulation
         self.weight_column_name_by_entity_symbol = survey_scenario.weight_column_name_by_entity_symbol
         self.varlist = AGGREGATES_DEFAULT_VARS
         self.filter_by_var_list = FILTERING_VARS
