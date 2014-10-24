@@ -171,7 +171,7 @@ class Aggregates(object):
         return DataFrame([
             u'OpenFisca',
             u'Calculé le %s à %s' % (now.strftime('%d-%m-%Y'), now.strftime('%H:%M')),
-            u'Système socio-fiscal au %s' % self.simulation.period_date,
+            u'Système socio-fiscal au %s' % self.simulation.period.start,
             u"Données d'enquêtes de l'année %s" % str(self.simulation.input_table.survey_year),
             ])
 
