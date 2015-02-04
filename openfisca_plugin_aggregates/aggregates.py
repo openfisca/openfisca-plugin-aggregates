@@ -52,13 +52,17 @@ class Aggregates(object):
         ('benef_diff_abs', u"Diff absolue\nBénéficiaires\n(milliers)"),
         ('dep_diff_rel', u"Diff. relative\nDépenses"),
         ('benef_diff_rel', u"Diff. relative\nBénéficiaires"),
-        ))
+        ))  # TODO: localize
     show_default = False
     show_diff = True
     show_real = True
     survey_scenario = None
     totals_df = None
     varlist = None
+
+    def __init__(self, survey_scenario = None):
+        if survey_scenario is not None:
+            self.set_survey_scenario(survey_scenario)
 
     def clear(self):
         self.totals_df = None
@@ -91,7 +95,7 @@ class Aggregates(object):
             # amounts and beneficiaries from current data and default data if exists
             montant_benef = self.get_aggregate(var, filter_by)
             V.append(column_by_name[var].label)
-            entity = column_by_name[var].entity
+            entity = column_by_name[var].entity_key_plural
 
             U.append(entity)
             for dataname in montant_benef:
@@ -188,8 +192,8 @@ class Aggregates(object):
         simulation = self.simulation
         column_by_name = self.simulation.tax_benefit_system.column_by_name
         column = column_by_name[variable]
-        weight_name = self.weight_column_name_by_entity_symbol[column.entity]
-        filter_by_name = "{}_{}".format(filter_by, column.entity)
+        weight_name = self.weight_column_name_by_entity_key_plural[column.entity_key_plural]
+        filter_by_name = "{}_{}".format(filter_by, column.entity_key_plural)
         # amounts and beneficiaries from current data and default data if exists
         # Build weights for each entity
         data = DataFrame(
@@ -323,7 +327,7 @@ class Aggregates(object):
             self.simulation = survey_scenario.new_simulation(debug = debug, debug_all = debug_all, trace = debug_all)
         else:
             self.simulation = survey_scenario.simulation
-        self.weight_column_name_by_entity_symbol = survey_scenario.weight_column_name_by_entity_symbol
+        self.weight_column_name_by_entity_key_plural = survey_scenario.weight_column_name_by_entity_key_plural
         self.varlist = AGGREGATES_DEFAULT_VARS
         self.filter_by_var_list = FILTERING_VARS
         varname = self.filter_by_var_list[0]
