@@ -198,7 +198,7 @@ class Aggregates(object):
         # Build weights for each entity
         data = DataFrame(
             {
-                variable: simulation.calculate(variable),
+                variable: simulation.calculate_add(variable),
                 weight_name: simulation.calculate(weight_name),
                 }
             )

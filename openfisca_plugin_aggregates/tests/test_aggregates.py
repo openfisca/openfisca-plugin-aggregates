@@ -33,6 +33,7 @@ def create_survey_scenario(year = None):
     input_data_frame = get_input_data_frame(year)
     survey_scenario = SurveyScenario().init_from_data_frame(
         input_data_frame = input_data_frame,
+        used_as_input_variables = ['sal', 'cho', 'rst', 'agem'],
         year = year,
         )
     survey_scenario.initialize_weights()
@@ -40,11 +41,13 @@ def create_survey_scenario(year = None):
     return survey_scenario
 
 
-def test_aggregates(year = 2006):
+def test_aggregates(year = None):
+    assert year is not None
     survey_scenario = create_survey_scenario(year)
     aggregates = Aggregates(survey_scenario = survey_scenario)
     aggregates.compute()
-    return aggregates.aggr_frame
+    print aggregates.aggr_frame
+    return aggregates
 
 
 if __name__ == '__main__':
@@ -52,5 +55,5 @@ if __name__ == '__main__':
     log = logging.getLogger(__name__)
     import sys
     logging.basicConfig(level = logging.INFO, stream = sys.stdout)
-    df = test_aggregates()
-    print df
+    aggregates = test_aggregates(year = 2009)
+    df =  aggregates.aggr_frame
