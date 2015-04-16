@@ -36,7 +36,6 @@ def create_survey_scenario(year = None):
         used_as_input_variables = ['sal', 'cho', 'rst', 'age_en_mois'],
         year = year,
         )
-    survey_scenario.initialize_weights()
 
     return survey_scenario
 
@@ -56,4 +55,4 @@ if __name__ == '__main__':
     import sys
     logging.basicConfig(level = logging.INFO, stream = sys.stdout)
     aggregates = test_aggregates(year = 2009)
-    df =  aggregates.aggr_frame
+    df = aggregates.aggr_frame
