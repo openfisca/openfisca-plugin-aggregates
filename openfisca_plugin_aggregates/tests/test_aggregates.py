@@ -33,7 +33,7 @@ def create_survey_scenario(year = None):
     input_data_frame = get_input_data_frame(year)
     survey_scenario = SurveyScenario().init_from_data_frame(
         input_data_frame = input_data_frame,
-        used_as_input_variables = ['sal', 'cho', 'rst', 'age_en_mois'],
+        used_as_input_variables = ['salaire_imposable', 'cho', 'rst', 'age_en_mois'],
         year = year,
         )
 
