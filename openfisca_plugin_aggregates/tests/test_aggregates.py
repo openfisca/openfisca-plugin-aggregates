@@ -28,11 +28,14 @@ from openfisca_france_data.surveys import SurveyScenario
 from openfisca_plugin_aggregates.aggregates import Aggregates
 
 
-def create_survey_scenario(year = None):
+def create_survey_scenario(year = None, reform = None):
     assert year is not None
+    if reform is not None :
+        log.warning("="*10 + "Is working in reform mode, take care when compare to true aggregates"+ "="*10)
     input_data_frame = get_input_data_frame(year)
     survey_scenario = SurveyScenario().init_from_data_frame(
         input_data_frame = input_data_frame,
+        reform = reform,
         used_as_input_variables = ['salaire_imposable', 'cho', 'rst', 'age_en_mois'],
         year = year,
         )
@@ -40,9 +43,14 @@ def create_survey_scenario(year = None):
     return survey_scenario
 
 
-def test_aggregates(year = None):
+def test_aggregates(year = None, reform = None):
+    '''
+    test aggregates value with data
+    :param year: year of data and simulation to test agregates
+    :param reform: optional argument, put an openfisca_france.refoms object, default None
+    '''
     assert year is not None
-    survey_scenario = create_survey_scenario(year)
+    survey_scenario = create_survey_scenario(year, reform)
     aggregates = Aggregates(survey_scenario = survey_scenario)
     aggregates.compute()
     print aggregates.aggr_frame
@@ -50,9 +58,10 @@ def test_aggregates(year = None):
 
 
 if __name__ == '__main__':
+    from openfisca_france.reforms import allocations_familiales_imposables as reform
     import logging
     log = logging.getLogger(__name__)
     import sys
     logging.basicConfig(level = logging.INFO, stream = sys.stdout)
-    aggregates = test_aggregates(year = 2009)
-    df = aggregates.aggr_frame
+    aggregates = test_aggregates(year = 2009, reform = reform)
+ #   df = aggregates.aggr_frame
