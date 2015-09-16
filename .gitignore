@@ -1,5 +1,6 @@
 .project
 .pydevproject
+.spyderproject
 .settings/
 build/
 dist/
