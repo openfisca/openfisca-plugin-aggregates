@@ -45,7 +45,7 @@ def test_aggregates(year = None):
     survey_scenario = create_survey_scenario(year)
     aggregates = Aggregates(survey_scenario = survey_scenario)
     aggregates.compute()
-    print aggregates.aggr_frame
+    print aggregates.data_frame
     return aggregates
 
 
@@ -55,4 +55,4 @@ if __name__ == '__main__':
     import sys
     logging.basicConfig(level = logging.INFO, stream = sys.stdout)
     aggregates = test_aggregates(year = 2009)
-    df = aggregates.aggr_frame
+    df = aggregates.data_frame

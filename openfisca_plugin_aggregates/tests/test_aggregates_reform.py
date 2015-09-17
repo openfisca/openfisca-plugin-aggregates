@@ -30,8 +30,8 @@ from openfisca_plugin_aggregates.aggregates import Aggregates
 
 def create_survey_scenario(year = None, reform = None):
     assert year is not None
-    if reform is not None:
-        log.warning("Using reform {}".format(reform.name))
+#    if reform is not None:
+#        log.warning("Using reform {}".format(reform.name))
     input_data_frame = get_input_data_frame(year)
     survey_scenario = SurveyScenario().init_from_data_frame(
         input_data_frame = input_data_frame,
@@ -53,7 +53,7 @@ def test_aggregates(year = None, reform = None):
     survey_scenario = create_survey_scenario(year, reform)
     aggregates = Aggregates(survey_scenario = survey_scenario)
     aggregates.compute()
-    print aggregates.aggr_frame
+    print aggregates.data_frame
     return aggregates
 
 
@@ -64,4 +64,4 @@ if __name__ == '__main__':
     import sys
     logging.basicConfig(level = logging.INFO, stream = sys.stdout)
     aggregates = test_aggregates(year = 2009, reform = reform)
-    #   df = aggregates.aggr_frame
+    df = aggregates.data_frame

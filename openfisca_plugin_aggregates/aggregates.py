@@ -30,7 +30,7 @@ from datetime import datetime
 import os
 
 from numpy import nan
-from pandas import DataFrame, ExcelWriter, HDFStore
+import pandas
 
 from openfisca_france_data import AGGREGATES_DEFAULT_VARS, FILTERING_VARS, PLUGINS_DIR
 
@@ -76,6 +76,34 @@ class Aggregates(object):
         self.compute_real()
         self.compute_diff()
 
+    def compute_aggregates_base(self, filter_by = None):
+        """
+        Compute aggregate amounts
+        """
+        base_data_frame = pandas.DataFrame()
+
+        for simulation_type in ['reference', 'reform', 'actual']:
+            for variable in self.varlist:
+                # amounts and beneficiaries from current data and default data if exists
+                montant_benef = self.get_aggregate(
+                    variable, filter_by = filter_by,
+                    simulation_type = simulation_type
+                    )
+
+                V.append(column_by_name[var].label)
+                entity = column_by_name[var].entity_key_plural
+
+
+        import itertools
+        lists = [
+,
+            ['amounts', 'beneficiaries'],
+            ]
+        columns = [
+            '{}_{}'.format(situation, value) for (situation, value) in itertools.product(*lists)
+            ]
+
+
     def compute_aggregates(self, filter_by = None):
         """
         Compute aggregate amounts
@@ -86,9 +114,9 @@ class Aggregates(object):
         B = {'data': [], 'default': []}
         U = []
 
-        M_label = {'data': self.labels['dep'],
+        amounts_label = {'data': self.labels['dep'],
                    'default': self.labels['dep_default']}
-        B_label = {'data': self.labels['benef'],
+        beneficiaries_label = {'data': self.labels['benef'],
                    'default': self.labels['benef_default']}
 
         for var in self.varlist:
@@ -107,47 +135,50 @@ class Aggregates(object):
 
         for dataname in M:
             if M[dataname]:
-                items.append((M_label[dataname], M[dataname]))
-                items.append((B_label[dataname], B[dataname]))
+                items.append((amounts_label[dataname], M[dataname]))
+                items.append((beneficiaries_label[dataname], B[dataname]))
 
         items.append((self.labels['entity'], U))
-        aggr_frame = DataFrame.from_items(items)
+        data_frame = pandas.DataFrame.from_items(items)
 
-        self.aggr_frame = None
+        self.data_frame = None
         for code, label in self.labels.iteritems():
             try:
-                col = aggr_frame[label]
-                if self.aggr_frame is None:
-                    self.aggr_frame = DataFrame(col)
+                col = data_frame[label]
+                if self.data_frame is None:
+                    self.data_frame = pandas.DataFrame(col)
                 else:
-                    self.aggr_frame = self.aggr_frame.join(col, how="outer")
+                    self.data_frame = self.data_frame.join(col, how="outer")
             except:
                 pass
 
+
+
+
     def compute_diff(self):
         '''
-        Computes and adds relative differences
+        Computes and adds relative differences to the data_frame
         '''
 
-        dep = self.aggr_frame[self.labels['dep']]
-        benef = self.aggr_frame[self.labels['benef']]
+        dep = self.data_frame[self.labels['dep']]
+        benef = self.data_frame[self.labels['benef']]
 
         if self.show_default:
             ref_dep_label, ref_benef_label = self.labels['dep_default'], self.labels['benef_default']
-            if ref_dep_label not in self.aggr_frame:
+            if ref_dep_label not in self.data_frame:
                 return
         elif self.show_real:
             ref_dep_label, ref_benef_label = self.labels['dep_real'], self.labels['benef_real']
         else:
             return
 
-        ref_dep = self.aggr_frame[ref_dep_label]
-        ref_benef = self.aggr_frame[ref_benef_label]
+        ref_dep = self.data_frame[ref_dep_label]
+        ref_benef = self.data_frame[ref_benef_label]
 
-        self.aggr_frame[self.labels['dep_diff_rel']] = (dep - ref_dep) / abs(ref_dep)
-        self.aggr_frame[self.labels['benef_diff_rel']] = (benef - ref_benef) / abs(ref_benef)
-        self.aggr_frame[self.labels['dep_diff_abs']] = dep - ref_dep
-        self.aggr_frame[self.labels['benef_diff_abs']] = benef - ref_benef
+        self.data_frame[self.labels['dep_diff_rel']] = (dep - ref_dep) / abs(ref_dep)
+        self.data_frame[self.labels['benef_diff_rel']] = (benef - ref_benef) / abs(ref_benef)
+        self.data_frame[self.labels['dep_diff_abs']] = dep - ref_dep
+        self.data_frame[self.labels['benef_diff_abs']] = benef - ref_benef
 
     def compute_real(self):
         '''
@@ -164,8 +195,8 @@ class Aggregates(object):
             else:
                 A.append(nan)
                 B.append(nan)
-        self.aggr_frame[self.labels['dep_real']] = A
-        self.aggr_frame[self.labels['benef_real']] = B
+        self.data_frame[self.labels['dep_real']] = A
+        self.data_frame[self.labels['benef_real']] = B
 
     def create_description(self):
         '''
@@ -178,6 +209,11 @@ class Aggregates(object):
             u'Système socio-fiscal au %s' % self.simulation.period.start,
             u"Données d'enquêtes de l'année %s" % str(self.simulation.input_table.survey_year),
             ])
+
+
+    def get_aggregate2(self, variable, filter_by = None, simulation_type):
+
+
 
     def get_aggregate(self, variable, filter_by = None):
         """
@@ -209,15 +245,15 @@ class Aggregates(object):
             datasets['default'] = data_default
         filter_indicator = True
         if filter_by:
-            filtered_data = DataFrame(
+            filtered_data = pandas.DataFrame(
                 {
                     variable: simulation.calculate(variable),
                     weight_name: simulation.calculate(weight_name),
                     filter_by_name: simulation.calculate(filter_by_name),
                     }
                 )
-            data_default = None
             filter_indicator = filtered_data[filter_by_name]
+
         m_b = {}
 
         weight = data[weight_name] * filter_indicator
@@ -248,16 +284,16 @@ class Aggregates(object):
 
         try:
             filename = os.path.join(data_dir, "amounts.h5")
-            store = HDFStore(filename)
+            store = pandas.HDFStore(filename)
 
             df_a = store['amounts']
             df_b = store['benef']
             store.close()
-            self.totals_df = DataFrame(data = {
+            self.totals_df = pandas.DataFrame(data = {
                 "amount": df_a[year] / 10 ** 6,
                 "benef": df_b[year] / 1000,
                 })
-            row = DataFrame({'amount': nan, 'benef': nan}, index = ['logt'])
+            row = pandas.DataFrame({'amount': nan, 'benef': nan}, index = ['logt'])
             self.totals_df = self.totals_df.append(row)
 
             # Add some aditionnals totals
@@ -309,9 +345,9 @@ class Aggregates(object):
         fname = os.path.join(directory, filename)
 
         try:
-            df = self.aggr_frame
+            df = self.data_frame
             if table_format == "xls":
-                writer = ExcelWriter(str(fname))
+                writer = pandas.ExcelWriter(str(fname))
                 df.to_excel(writer, "aggregates", index= False, header= True)
                 descr = self.create_description()
                 descr.to_excel(writer, "description", index = False, header=False)
@@ -323,9 +359,17 @@ class Aggregates(object):
 
     def set_survey_scenario(self, survey_scenario, debug = False, debug_all = False, trace = False):
         self.year = survey_scenario.year
-        if survey_scenario.simulation is None:
-            self.simulation = survey_scenario.new_simulation(debug = debug, debug_all = debug_all, trace = debug_all)
+        if survey_scenario.simulation is not None:
+            raise('A simulation already exists')
+            boum
         else:
+            self.reference_simulation = survey_scenario.new_simulation(
+            debug = debug,
+            debug_all = debug_all,
+            reference = True,
+            trace = debug_all
+            )
+
             self.simulation = survey_scenario.simulation
         self.weight_column_name_by_entity_key_plural = survey_scenario.weight_column_name_by_entity_key_plural
         self.varlist = AGGREGATES_DEFAULT_VARS
