@@ -33,11 +33,15 @@ from numpy import nan
 import pandas
 
 from openfisca_france_data import AGGREGATES_DEFAULT_VARS, FILTERING_VARS, PLUGINS_DIR
+from openfisca_france_data.tests import base
 
 DATA_DIR = os.path.join(PLUGINS_DIR, 'aggregates')
 
 
+# TODO: units for amount and beneficiaries
+
 class Aggregates(object):
+    base_data_frame = None
     filter_by = None
     labels = collections.OrderedDict((
         ('var', u"Mesure"),
@@ -53,9 +57,6 @@ class Aggregates(object):
         ('dep_diff_rel', u"Diff. relative\nDépenses"),
         ('benef_diff_rel', u"Diff. relative\nBénéficiaires"),
         ))  # TODO: localize
-    show_default = False
-    show_diff = True
-    show_real = True
     survey_scenario = None
     totals_df = None
     varlist = None
@@ -64,158 +65,74 @@ class Aggregates(object):
         if survey_scenario is not None:
             self.set_survey_scenario(survey_scenario)
 
-    def clear(self):
-        self.totals_df = None
-
-    def compute(self):
-        """
-        Compute the whole table
-        """
-        self.compute_aggregates(self.filter_by)
-        self.load_amounts_from_file()
-        self.compute_real()
-        self.compute_diff()
-
-    def compute_aggregates_base(self, filter_by = None):
+    def compute_aggregates(self, reference = True, reform = True, actual = True):
         """
         Compute aggregate amounts
         """
+        filter_by = self.filter_by
+        self.load_amounts_from_file()
         base_data_frame = pandas.DataFrame()
 
-        for simulation_type in ['reference', 'reform', 'actual']:
-            for variable in self.varlist:
-                # amounts and beneficiaries from current data and default data if exists
-                montant_benef = self.get_aggregate(
-                    variable, filter_by = filter_by,
-                    simulation_type = simulation_type
-                    )
+        simulation_types = list()
+        if reference:
+            simulation_types.append('reference')
+        if reform:
+            simulation_types.append('reform')
+        if actual:
+            simulation_types.append('actual')
 
-                V.append(column_by_name[var].label)
-                entity = column_by_name[var].entity_key_plural
-
-
-        import itertools
-        lists = [
-,
-            ['amounts', 'beneficiaries'],
-            ]
-        columns = [
-            '{}_{}'.format(situation, value) for (situation, value) in itertools.product(*lists)
-            ]
-
-
-    def compute_aggregates(self, filter_by = None):
-        """
-        Compute aggregate amounts
-        """
-        column_by_name = self.simulation.tax_benefit_system.column_by_name
-        V = []
-        M = {'data': [], 'default': []}
-        B = {'data': [], 'default': []}
-        U = []
-
-        amounts_label = {'data': self.labels['dep'],
-                   'default': self.labels['dep_default']}
-        beneficiaries_label = {'data': self.labels['benef'],
-                   'default': self.labels['benef_default']}
-
-        for var in self.varlist:
-            # amounts and beneficiaries from current data and default data if exists
-            montant_benef = self.get_aggregate(var, filter_by)
-            V.append(column_by_name[var].label)
-            entity = column_by_name[var].entity_key_plural
-
-            U.append(entity)
-            for dataname in montant_benef:
-                M[dataname].append(montant_benef[dataname][0])
-                B[dataname].append(montant_benef[dataname][1])
-
-        # build items list
-        items = [(self.labels['var'], V)]
-
-        for dataname in M:
-            if M[dataname]:
-                items.append((amounts_label[dataname], M[dataname]))
-                items.append((beneficiaries_label[dataname], B[dataname]))
-
-        items.append((self.labels['entity'], U))
-        data_frame = pandas.DataFrame.from_items(items)
-
-        self.data_frame = None
-        for code, label in self.labels.iteritems():
-            try:
-                col = data_frame[label]
-                if self.data_frame is None:
-                    self.data_frame = pandas.DataFrame(col)
+        for simulation_type in simulation_types:
+            if simulation_type == 'actual':
+                if base_data_frame.empty:
+                    base_data_frame = self.totals_df.copy()
                 else:
-                    self.data_frame = self.data_frame.join(col, how="outer")
-            except:
-                pass
+                    base_data_frame = pandas.concat((base_data_frame, self.totals_df), axis = 1)
+            else:
+                for variable in self.varlist:
+                    variable_data_frame = self.compute_variable_aggregates(
+                        variable, filter_by = filter_by, simulation_type = simulation_type)
+                    if variable not in base_data_frame.index:
+                        base_data_frame = pandas.concat((base_data_frame, variable_data_frame))
+                    else:
+                        base_data_frame = base_data_frame.merge(variable_data_frame)
 
+        self.base_data_frame = base_data_frame
+        return base_data_frame
 
-
-
-    def compute_diff(self):
+    def compute_difference(self, target = "reference", default = 'actual', amount = True, beneficiaries = True,
+            absolute = True, relative = True):
         '''
         Computes and adds relative differences to the data_frame
         '''
+        assert relative or absolute
+        assert amount or beneficiaries
+        base_data_frame = self.base_data_frame if self.base_data_frame is not None else self.compute_aggregates()
 
-        dep = self.data_frame[self.labels['dep']]
-        benef = self.data_frame[self.labels['benef']]
+        difference_data_frame = base_data_frame[['label', 'entity']].copy()
+        quantities = ['amount'] if amount else None + ['beneficiaries'] if beneficiaries else None
 
-        if self.show_default:
-            ref_dep_label, ref_benef_label = self.labels['dep_default'], self.labels['benef_default']
-            if ref_dep_label not in self.data_frame:
-                return
-        elif self.show_real:
-            ref_dep_label, ref_benef_label = self.labels['dep_real'], self.labels['benef_real']
-        else:
-            return
-
-        ref_dep = self.data_frame[ref_dep_label]
-        ref_benef = self.data_frame[ref_benef_label]
-
-        self.data_frame[self.labels['dep_diff_rel']] = (dep - ref_dep) / abs(ref_dep)
-        self.data_frame[self.labels['benef_diff_rel']] = (benef - ref_benef) / abs(ref_benef)
-        self.data_frame[self.labels['dep_diff_abs']] = dep - ref_dep
-        self.data_frame[self.labels['benef_diff_abs']] = benef - ref_benef
-
-    def compute_real(self):
-        '''
-        Adds administrative data to dataframe
-        '''
-        if self.totals_df is None:
-            return
-        A, B = [], []
-        for var in self.varlist:
-            # totals from administrative data
-            if var in self.totals_df.index:
-                A.append(self.totals_df.get_value(var, "amount"))
-                B.append(self.totals_df.get_value(var, "benef"))
-            else:
-                A.append(nan)
-                B.append(nan)
-        self.data_frame[self.labels['dep_real']] = A
-        self.data_frame[self.labels['benef_real']] = B
+        for quantity in quantities:
+            difference_data_frame['{}_absolute_difference'.format(quantity)] = (
+                base_data_frame['{}_{}'.format(target, quantity)] - base_data_frame['{}_{}'.format(default, quantity)]
+                )
+            difference_data_frame['{}_relative_difference'.format(quantity)] = (
+                base_data_frame['{}_{}'.format(target, quantity)] - base_data_frame['{}_{}'.format(default, quantity)]
+                ) / abs(base_data_frame['{}_{}'.format(default, quantity)])
+        return difference_data_frame
 
     def create_description(self):
         '''
         Creates a description dataframe
         '''
         now = datetime.now()
-        return DataFrame([
+        return pandas.DataFrame([
             u'OpenFisca',
             u'Calculé le %s à %s' % (now.strftime('%d-%m-%Y'), now.strftime('%H:%M')),
             u'Système socio-fiscal au %s' % self.simulation.period.start,
             u"Données d'enquêtes de l'année %s" % str(self.simulation.input_table.survey_year),
             ])
 
-
-    def get_aggregate2(self, variable, filter_by = None, simulation_type):
-
-
-
-    def get_aggregate(self, variable, filter_by = None):
+    def compute_variable_aggregates(self, variable, filter_by = None, simulation_type = 'reference'):
         """
         Returns aggregate spending, and number of beneficiaries
         for the relevant entity level
@@ -224,54 +141,51 @@ class Aggregates(object):
         ----------
         variable : string
                    name of the variable aggregated according to its entity
+        filter_by : string
+                    name of the variable to filter by
+        simulation_type : string
+                          reference or reform or actual
         """
-        simulation = self.simulation
-        column_by_name = self.simulation.tax_benefit_system.column_by_name
+        assert simulation_type in ['reference', 'reform']
+        prefixed_simulation = '{}_simulation'.format(simulation_type)
+        simulation = getattr(self, prefixed_simulation)
+        column_by_name = simulation.tax_benefit_system.column_by_name
         column = column_by_name[variable]
-        weight_name = self.weight_column_name_by_entity_key_plural[column.entity_key_plural]
-        filter_by_name = "{}_{}".format(filter_by, column.entity_key_plural)
+        weight = self.weight_column_name_by_entity_key_plural[column.entity_key_plural]
+        assert weight in column_by_name, "{} not a variable of the system".format(weight)
         # amounts and beneficiaries from current data and default data if exists
         # Build weights for each entity
-        data = DataFrame(
-            {
-                variable: simulation.calculate_add(variable),
-                weight_name: simulation.calculate(weight_name),
-                }
-            )
-        data_default = None
-
-        datasets = {'data': data}
-        if data_default is not None:
-            datasets['default'] = data_default
-        filter_indicator = True
+        data = pandas.DataFrame({
+            variable: simulation.calculate_add(variable),
+            weight: simulation.calculate(weight),
+            })
         if filter_by:
-            filtered_data = pandas.DataFrame(
-                {
-                    variable: simulation.calculate(variable),
-                    weight_name: simulation.calculate(weight_name),
-                    filter_by_name: simulation.calculate(filter_by_name),
-                    }
+            filter_dummy = simulation.calculate("{}_{}".format(filter_by, column.entity_key_plural))
+
+        try:
+            amount = int(
+                (data[variable] * data[weight] * filter_dummy / 10 ** 6).sum().round()
                 )
-            filter_indicator = filtered_data[filter_by_name]
+        except:
+            amount = nan
+        try:
+            beneficiaries = int(
+                ((data[variable] != 0) * weight * filter_dummy / 10 ** 3).sum().round()
+                )
+        except:
+            beneficiaries = nan
 
-        m_b = {}
+        variable_data_frame = pandas.DataFrame(
+            data = {
+                'label': column_by_name[variable].label,
+                'entity': column_by_name[variable].entity_key_plural,
+                '{}_amount'.format(simulation_type): amount,
+                '{}_beneficiaries'.format(simulation_type): beneficiaries,
+                },
+            index = [variable],
+            )
 
-        weight = data[weight_name] * filter_indicator
-        for name, data in datasets.iteritems():
-            amount = data[variable]
-            benef = data[variable].values != 0
-            try:
-                total_amount = int(round(sum(amount * weight) / 10 ** 6))
-            except:
-                total_amount = nan
-            try:
-                total_benef = int(round(sum(benef * weight) / 10 ** 3))
-            except:
-                total_benef = nan
-
-            m_b[name] = [total_amount, total_benef]
-
-        return m_b
+        return variable_data_frame
 
     def load_amounts_from_file(self, filename = None, year = None):
         '''
@@ -282,45 +196,45 @@ class Aggregates(object):
         if filename is None:
             data_dir = DATA_DIR
 
-        try:
-            filename = os.path.join(data_dir, "amounts.h5")
-            store = pandas.HDFStore(filename)
+#        try:
+        filename = os.path.join(data_dir, "amounts.h5")
+        store = pandas.HDFStore(filename)
 
-            df_a = store['amounts']
-            df_b = store['benef']
-            store.close()
-            self.totals_df = pandas.DataFrame(data = {
-                "amount": df_a[year] / 10 ** 6,
-                "benef": df_b[year] / 1000,
-                })
-            row = pandas.DataFrame({'amount': nan, 'benef': nan}, index = ['logt'])
-            self.totals_df = self.totals_df.append(row)
+        df_a = store['amounts']
+        df_b = store['benef']
+        store.close()
+        self.totals_df = pandas.DataFrame(data = {
+            "actual_amount": df_a[year] / 10 ** 6,
+            "actual_beneficiaries": df_b[year] / 10 ** 3,
+            })
+        row = pandas.DataFrame({'actual_amount': nan, 'actual_beneficiaries': nan}, index = ['logt'])
+        self.totals_df = self.totals_df.append(row)
 
-            # Add some aditionnals totals
-            for col in ['amount', 'benef']:
-                # Deals with logt
-                logt = 0
-                for var in ['apl', 'alf', 'als']:
-                    logt += self.totals_df.get_value(var, col)
-                self.totals_df.set_value('logt', col, logt)
+        # Add some aditionnals totals
+        for col in ['actual_amount', 'actual_beneficiaries']:
+            # Deals with logt
+            logt = 0
+            for var in ['apl', 'alf', 'als']:
+                logt += self.totals_df.get_value(var, col)
+            self.totals_df.set_value('logt', col, logt)
 
-                # Deals with rsa rmi
-                rsa = 0
-                for var in ['rmi', 'rsa']:
-                    rsa += self.totals_df.get_value(var, col)
-                self.totals_df.set_value('rsa', col, rsa)
+            # Deals with rsa rmi
+            rsa = 0
+            for var in ['rmi', 'rsa']:
+                rsa += self.totals_df.get_value(var, col)
+            self.totals_df.set_value('rsa', col, rsa)
 
-                # Deals with irpp, csg, crds
-                for var in ['irpp', 'csg', 'crds', 'cotsoc_noncontrib']:
-                    if col in ['amount']:
-                        val = - self.totals_df.get_value(var, col)
-                        self.totals_df.set_value(var, col, val)
-        except:
-            #  raise Exception(" No administrative data available for year " + str(year))
-            import warnings
-            warnings.warn("No administrative data available for year %s in file %s" % (str(year), filename))
-            self.totals_df = None
-            return
+            # Deals with irpp, csg, crds
+            for var in ['irpp', 'csg', 'crds', 'cotsoc_noncontrib']:
+                if col in ['actual_amount']:
+                    val = - self.totals_df.get_value(var, col)
+                    self.totals_df.set_value(var, col, val)
+#        except:
+#            #  raise Exception(" No administrative data available for year " + str(year))
+#            import warnings
+#            warnings.warn("No administrative data available for year %s in file %s" % (str(year), filename))
+#            self.totals_df = None
+#            return
 
     def save_table(self, directory = None, filename = None, table_format = None):
         '''
@@ -361,16 +275,20 @@ class Aggregates(object):
         self.year = survey_scenario.year
         if survey_scenario.simulation is not None:
             raise('A simulation already exists')
-            boum
+
         else:
             self.reference_simulation = survey_scenario.new_simulation(
-            debug = debug,
-            debug_all = debug_all,
-            reference = True,
-            trace = debug_all
-            )
+                debug = debug,
+                debug_all = debug_all,
+                reference = base.france_data_tax_benefit_system,
+                trace = debug_all
+                )
+            self.reform_simulation = survey_scenario.new_simulation(
+                debug = debug,
+                debug_all = debug_all,
+                trace = debug_all
+                )
 
-            self.simulation = survey_scenario.simulation
         self.weight_column_name_by_entity_key_plural = survey_scenario.weight_column_name_by_entity_key_plural
         self.varlist = AGGREGATES_DEFAULT_VARS
         self.filter_by_var_list = FILTERING_VARS
