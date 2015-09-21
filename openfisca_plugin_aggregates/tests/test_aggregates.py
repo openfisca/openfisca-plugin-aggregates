@@ -51,6 +51,7 @@ def create_survey_scenario(year = None):
 def test_aggregates(year = 2009):
     assert year is not None
     survey_scenario = create_survey_scenario(year)
+    assert survey_scenario is not None
     aggregates = Aggregates(survey_scenario = survey_scenario)
     # print aggregates.totals_df
 

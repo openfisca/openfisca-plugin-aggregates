@@ -61,9 +61,35 @@ class Aggregates(object):
     totals_df = None
     varlist = None
 
-    def __init__(self, survey_scenario = None):
-        if survey_scenario is not None:
-            self.set_survey_scenario(survey_scenario)
+    def __init__(self, survey_scenario = None, debug = False, debug_all = False, trace = False):
+        assert survey_scenario is not None
+        self.year = survey_scenario.year
+        self.survey_scenario = survey_scenario
+        if survey_scenario.simulation is not None:
+            raise('A simulation already exists')
+
+        else:
+            self.reform_simulation = survey_scenario.new_simulation(
+                debug = debug,
+                debug_all = debug_all,
+                trace = debug_all
+                )
+
+            if survey_scenario.reference_tax_benefit_system:
+                self.reference_simulation = survey_scenario.new_simulation(
+                    debug = debug,
+                    debug_all = debug_all,
+                    reference = True,
+                    trace = debug_all
+                    )
+            else:
+                self.reference_simulation = self.reform_simulation
+
+        self.weight_column_name_by_entity_key_plural = survey_scenario.weight_column_name_by_entity_key_plural
+        self.varlist = AGGREGATES_DEFAULT_VARS
+        self.filter_by_var_list = FILTERING_VARS
+        varname = self.filter_by_var_list[0]
+        self.filter_by = varname
 
     def compute_aggregates(self, reference = True, reform = True, actual = True):
         """
@@ -71,7 +97,6 @@ class Aggregates(object):
         """
         filter_by = self.filter_by
         self.load_amounts_from_file()
-        base_data_frame = pandas.DataFrame()
 
         simulation_types = list()
         if reference:
@@ -81,23 +106,31 @@ class Aggregates(object):
         if actual:
             simulation_types.append('actual')
 
+        no_reform = self.survey_scenario.reference_tax_benefit_system is None
+
+        data_frame_by_simulation_type = dict()
+
         for simulation_type in simulation_types:
             if simulation_type == 'actual':
-                if base_data_frame.empty:
-                    base_data_frame = self.totals_df.copy()
-                else:
-                    base_data_frame = pandas.concat((base_data_frame, self.totals_df), axis = 1)
+                data_frame_by_simulation_type['actual'] = self.totals_df.copy()
             else:
+                if no_reform and reference and data_frame_by_simulation_type.get('reference') is not None:
+                    data_frame_by_simulation_type['reform'] = data_frame_by_simulation_type['reference']
+                    continue
+
+                data_frame = pandas.DataFrame()
                 for variable in self.varlist:
                     variable_data_frame = self.compute_variable_aggregates(
                         variable, filter_by = filter_by, simulation_type = simulation_type)
-                    if variable not in base_data_frame.index:
-                        base_data_frame = pandas.concat((base_data_frame, variable_data_frame))
-                    else:
-                        base_data_frame = base_data_frame.merge(variable_data_frame)
+                    data_frame = pandas.concat((data_frame, variable_data_frame))
+                data_frame_by_simulation_type[simulation_type] = data_frame.copy()
 
-        self.base_data_frame = base_data_frame
-        return base_data_frame
+        if reference and reform:
+            del data_frame_by_simulation_type['reform']['entity']
+            del data_frame_by_simulation_type['reform']['label']
+
+        self.base_data_frame = pandas.concat(data_frame_by_simulation_type.values(), axis = 1).loc[self.varlist]
+        return self.base_data_frame
 
     def compute_difference(self, target = "reference", default = 'actual', amount = True, beneficiaries = True,
             absolute = True, relative = True):
@@ -271,26 +304,3 @@ class Aggregates(object):
         except Exception, e:
                 raise Exception("Aggregates: Error saving file", str(e))
 
-    def set_survey_scenario(self, survey_scenario, debug = False, debug_all = False, trace = False):
-        self.year = survey_scenario.year
-        if survey_scenario.simulation is not None:
-            raise('A simulation already exists')
-
-        else:
-            self.reference_simulation = survey_scenario.new_simulation(
-                debug = debug,
-                debug_all = debug_all,
-                reference = base.france_data_tax_benefit_system,
-                trace = debug_all
-                )
-            self.reform_simulation = survey_scenario.new_simulation(
-                debug = debug,
-                debug_all = debug_all,
-                trace = debug_all
-                )
-
-        self.weight_column_name_by_entity_key_plural = survey_scenario.weight_column_name_by_entity_key_plural
-        self.varlist = AGGREGATES_DEFAULT_VARS
-        self.filter_by_var_list = FILTERING_VARS
-        varname = self.filter_by_var_list[0]
-        self.filter_by = varname
