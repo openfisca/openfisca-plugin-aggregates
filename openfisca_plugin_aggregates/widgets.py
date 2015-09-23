@@ -148,7 +148,7 @@ class AggregatesWidget(OpenfiscaPluginWidget):
         '''
         Update aggregate amounts view
         '''
-        if self.aggregates.aggr_frame is None:
+        if self.aggregates.data_frame is None:
             return
 
         cols = self.aggregates.labels.values()
@@ -192,7 +192,7 @@ class AggregatesWidget(OpenfiscaPluginWidget):
                 if label in cols:
                     cols.remove(label)
 
-        self.view.set_dataframe(self.aggregates.aggr_frame[cols])
+        self.view.set_dataframe(self.aggregates.data_frame[cols])
         self.view.resizeColumnsToContents()
         self.view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 

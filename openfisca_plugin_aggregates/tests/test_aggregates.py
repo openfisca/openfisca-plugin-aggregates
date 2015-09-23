@@ -40,12 +40,12 @@ def create_survey_scenario(year = None):
     return survey_scenario
 
 
-def test_aggregates(year = None):
+def test_aggregates(year = 2009):
     assert year is not None
     survey_scenario = create_survey_scenario(year)
+    assert survey_scenario is not None
     aggregates = Aggregates(survey_scenario = survey_scenario)
-    aggregates.compute()
-    print aggregates.aggr_frame
+    aggregates.compute_aggregates()
     return aggregates
 
 
@@ -55,4 +55,3 @@ if __name__ == '__main__':
     import sys
     logging.basicConfig(level = logging.INFO, stream = sys.stdout)
     aggregates = test_aggregates(year = 2009)
-    df = aggregates.aggr_frame
