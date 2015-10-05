@@ -27,13 +27,17 @@ from __future__ import division
 
 import collections
 from datetime import datetime
+import logging
 import os
 
 from numpy import nan
 import pandas
 
 from openfisca_france_data import AGGREGATES_DEFAULT_VARS, FILTERING_VARS, PLUGINS_DIR
-from openfisca_france_data.tests import base
+
+
+log = logging.getLogger(__name__)
+
 
 DATA_DIR = os.path.join(PLUGINS_DIR, 'aggregates')
 
@@ -114,8 +118,12 @@ class Aggregates(object):
             if simulation_type == 'actual':
                 data_frame_by_simulation_type['actual'] = self.totals_df.copy()
             else:
-                if no_reform and reference and data_frame_by_simulation_type.get('reference') is not None:
+                if no_reform and (not reform) and reference and data_frame_by_simulation_type.get('reference') is not None:
                     data_frame_by_simulation_type['reform'] = data_frame_by_simulation_type['reference']
+                    data_frame_by_simulation_type['reform'].rename(columns = dict(
+                        reference_amount = "reform_amount",
+                        reference_beneficiaries = "reform_beneficiaries",
+                        ))
                     continue
 
                 data_frame = pandas.DataFrame()
@@ -185,7 +193,8 @@ class Aggregates(object):
         column_by_name = simulation.tax_benefit_system.column_by_name
         column = column_by_name[variable]
         weight = self.weight_column_name_by_entity_key_plural[column.entity_key_plural]
-        assert weight in column_by_name, "{} not a variable of the system".format(weight)
+        assert weight in column_by_name, "{} not a variable of the {} tax_benefit_system".format(
+            weight, simulation_type)
         # amounts and beneficiaries from current data and default data if exists
         # Build weights for each entity
         data = pandas.DataFrame({
@@ -203,7 +212,7 @@ class Aggregates(object):
             amount = nan
         try:
             beneficiaries = int(
-                ((data[variable] != 0) * weight * filter_dummy / 10 ** 3).sum().round()
+                ((data[variable] != 0) * data[weight] * filter_dummy / 10 ** 3).sum().round()
                 )
         except:
             beneficiaries = nan
@@ -229,45 +238,43 @@ class Aggregates(object):
         if filename is None:
             data_dir = DATA_DIR
 
-#        try:
-        filename = os.path.join(data_dir, "amounts.h5")
-        store = pandas.HDFStore(filename)
+        try:
+            filename = os.path.join(data_dir, "amounts.h5")
+            store = pandas.HDFStore(filename)
 
-        df_a = store['amounts']
-        df_b = store['benef']
-        store.close()
-        self.totals_df = pandas.DataFrame(data = {
-            "actual_amount": df_a[year] / 10 ** 6,
-            "actual_beneficiaries": df_b[year] / 10 ** 3,
-            })
-        row = pandas.DataFrame({'actual_amount': nan, 'actual_beneficiaries': nan}, index = ['logt'])
-        self.totals_df = self.totals_df.append(row)
+            df_a = store['amounts']
+            df_b = store['benef']
+            store.close()
+            self.totals_df = pandas.DataFrame(data = {
+                "actual_amount": df_a[year] / 10 ** 6,
+                "actual_beneficiaries": df_b[year] / 10 ** 3,
+                })
+            row = pandas.DataFrame({'actual_amount': nan, 'actual_beneficiaries': nan}, index = ['logt'])
+            self.totals_df = self.totals_df.append(row)
 
-        # Add some aditionnals totals
-        for col in ['actual_amount', 'actual_beneficiaries']:
-            # Deals with logt
-            logt = 0
-            for var in ['apl', 'alf', 'als']:
-                logt += self.totals_df.get_value(var, col)
-            self.totals_df.set_value('logt', col, logt)
+            # Add some aditionnals totals
+            for col in ['actual_amount', 'actual_beneficiaries']:
+                # Deals with logt
+                logt = 0
+                for var in ['apl', 'alf', 'als']:
+                    logt += self.totals_df.get_value(var, col)
+                self.totals_df.set_value('logt', col, logt)
 
-            # Deals with rsa rmi
-            rsa = 0
-            for var in ['rmi', 'rsa']:
-                rsa += self.totals_df.get_value(var, col)
-            self.totals_df.set_value('rsa', col, rsa)
+                # Deals with rsa rmi
+                rsa = 0
+                for var in ['rmi', 'rsa']:
+                    rsa += self.totals_df.get_value(var, col)
+                self.totals_df.set_value('rsa', col, rsa)
 
-            # Deals with irpp, csg, crds
-            for var in ['irpp', 'csg', 'crds', 'cotsoc_noncontrib']:
-                if col in ['actual_amount']:
-                    val = - self.totals_df.get_value(var, col)
-                    self.totals_df.set_value(var, col, val)
-#        except:
-#            #  raise Exception(" No administrative data available for year " + str(year))
-#            import warnings
-#            warnings.warn("No administrative data available for year %s in file %s" % (str(year), filename))
-#            self.totals_df = None
-#            return
+                # Deals with irpp, csg, crds
+                for var in ['irpp', 'csg', 'crds', 'cotsoc_noncontrib']:
+                    if col in ['actual_amount']:
+                        val = - self.totals_df.get_value(var, col)
+                        self.totals_df.set_value(var, col, val)
+        except:
+            log.info("No administrative data available for year %s in file %s" % (str(year), filename))
+            self.totals_df = pandas.DataFrame()
+            return
 
     def save_table(self, directory = None, filename = None, table_format = None):
         '''
