@@ -35,7 +35,6 @@ def create_survey_scenario(year = None, reform = None):
     survey_scenario = SurveyScenario().init_from_data_frame(
         input_data_frame = input_data_frame,
         tax_benefit_system = reform,
-        used_as_input_variables = ['salaire_imposable', 'cho', 'rst', 'age_en_mois'],
         year = year,
         )
 
