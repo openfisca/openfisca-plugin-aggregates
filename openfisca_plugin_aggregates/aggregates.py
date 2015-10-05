@@ -61,6 +61,8 @@ class Aggregates(object):
         ('dep_diff_rel', u"Diff. relative\nDépenses"),
         ('benef_diff_rel', u"Diff. relative\nBénéficiaires"),
         ))  # TODO: localize
+    reference_simulation = None
+    reform_simulation = None
     survey_scenario = None
     totals_df = None
     varlist = None
@@ -69,17 +71,19 @@ class Aggregates(object):
         assert survey_scenario is not None
         self.year = survey_scenario.year
         self.survey_scenario = survey_scenario
-        if survey_scenario.simulation is not None:
+        if self.reform_simulation is not None:
             raise('A simulation already exists')
 
         else:
+            print 'loading reform_simulation'
             self.reform_simulation = survey_scenario.new_simulation(
                 debug = debug,
                 debug_all = debug_all,
                 trace = debug_all
                 )
 
-            if survey_scenario.reference_tax_benefit_system:
+            if survey_scenario.reference_tax_benefit_system is not None:
+                print 'loading reference_simulation'
                 self.reference_simulation = survey_scenario.new_simulation(
                     debug = debug,
                     debug_all = debug_all,
