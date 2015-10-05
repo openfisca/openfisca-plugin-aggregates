@@ -95,9 +95,7 @@ class Aggregates(object):
 
         self.weight_column_name_by_entity_key_plural = survey_scenario.weight_column_name_by_entity_key_plural
         self.varlist = AGGREGATES_DEFAULT_VARS
-        self.filter_by_var_list = FILTERING_VARS
-        varname = self.filter_by_var_list[0]
-        self.filter_by = varname
+        self.filter_by = FILTERING_VARS[0]
 
     def compute_aggregates(self, reference = True, reform = True, actual = True):
         """
