@@ -76,20 +76,11 @@ class Aggregates(object):
 
         else:
             print 'loading reform_simulation'
-            self.reform_simulation = survey_scenario.new_simulation(
-                debug = debug,
-                debug_all = debug_all,
-                trace = debug_all
-                )
+            self.reform_simulation = self.survey_scenario.simulation
 
             if survey_scenario.reference_tax_benefit_system is not None:
                 print 'loading reference_simulation'
-                self.reference_simulation = survey_scenario.new_simulation(
-                    debug = debug,
-                    debug_all = debug_all,
-                    reference = True,
-                    trace = debug_all
-                    )
+                self.reference_simulation = survey_scenario.reference_simulation
             else:
                 self.reference_simulation = self.reform_simulation
 
@@ -312,4 +303,3 @@ class Aggregates(object):
                 df.to_csv(fname, "aggregates", index= False, header = True)
         except Exception, e:
                 raise Exception("Aggregates: Error saving file", str(e))
-
