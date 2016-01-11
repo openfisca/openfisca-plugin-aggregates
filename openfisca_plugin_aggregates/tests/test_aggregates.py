@@ -23,29 +23,36 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from openfisca_france_data.input_data_builders import get_input_data_frame
-from openfisca_france_data.surveys import SurveyScenario
+import openfisca_france
+from openfisca_france.surveys import SurveyScenario
+from openfisca_survey_manager.surveys import SurveyCollection
 from openfisca_plugin_aggregates.aggregates import Aggregates
 
 
 def create_survey_scenario(year = None):
     assert year is not None
-    input_data_frame = get_input_data_frame(year)
+    openfisca_survey_collection = SurveyCollection.load(collection = "openfisca")
+    openfisca_survey = openfisca_survey_collection.surveys["openfisca_data_{}".format(year)]
+    input_data_frame = openfisca_survey.get_values(table = "input")
+    input_data_frame.reset_index(inplace = True)
+    assert "wprm" in input_data_frame.columns
+    TaxBenefitSystem = openfisca_france.init_country()
+    tax_benefit_system = TaxBenefitSystem()
     survey_scenario = SurveyScenario().init_from_data_frame(
         input_data_frame = input_data_frame,
+        tax_benefit_system= tax_benefit_system,
         year = year,
         )
-
     return survey_scenario
 
 
-def test_aggregates(year = 2009):
-    assert year is not None
+def test_aggregates(year = 2006):
     survey_scenario = create_survey_scenario(year)
-    assert survey_scenario is not None
-    aggregates = Aggregates(survey_scenario = survey_scenario)
-    base_data_frame = aggregates.compute_aggregates(reform = False)
-    return aggregates, base_data_frame
+    aggregates = Aggregates()
+    aggregates.set_survey_scenario(survey_scenario)
+    aggregates.compute_aggregates()
+    print aggregates.aggr_frame
+    aggregates.compute()
 
 
 if __name__ == '__main__':
@@ -53,4 +60,4 @@ if __name__ == '__main__':
     log = logging.getLogger(__name__)
     import sys
     logging.basicConfig(level = logging.INFO, stream = sys.stdout)
-    aggregates, base_data_frame = test_aggregates(year = 2009)
+    test_aggregates()
