@@ -24,7 +24,7 @@
 
 
 import openfisca_france
-from openfisca_france.surveys import SurveyScenario
+from openfisca_france_data.surveys import SurveyScenario
 from openfisca_survey_manager.surveys import SurveyCollection
 from openfisca_plugin_aggregates.aggregates import Aggregates
 
