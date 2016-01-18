@@ -76,10 +76,14 @@ class Aggregates(object):
 
         else:
             print 'loading reform_simulation'
+            if not self.survey_scenario.simulation:
+                self.survey_scenario.new_simulation()
             self.reform_simulation = self.survey_scenario.simulation
 
             if survey_scenario.reference_tax_benefit_system is not None:
                 print 'loading reference_simulation'
+                if not survey_scenario.reference_simulation:
+                    survey_scenario.new_simulation(reference = True)
                 self.reference_simulation = survey_scenario.reference_simulation
             else:
                 self.reference_simulation = self.reform_simulation
@@ -182,6 +186,9 @@ class Aggregates(object):
         """
         assert simulation_type in ['reference', 'reform']
         prefixed_simulation = '{}_simulation'.format(simulation_type)
+        print simulation_type
+        print self.reference_simulation
+        print self.reform_simulation
         simulation = getattr(self, prefixed_simulation)
         column_by_name = simulation.tax_benefit_system.column_by_name
         column = column_by_name[variable]

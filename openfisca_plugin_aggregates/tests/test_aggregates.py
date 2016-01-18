@@ -48,8 +48,7 @@ def create_survey_scenario(year = None):
 
 def test_aggregates(year = 2009):
     survey_scenario = create_survey_scenario(year)
-    aggregates = Aggregates()
-    aggregates.set_survey_scenario(survey_scenario)
+    aggregates = Aggregates(survey_scenario = survey_scenario)
     aggregates.compute_aggregates()
     print aggregates.aggr_frame
     aggregates.compute()

@@ -4,6 +4,7 @@
 .settings/
 build/
 dist/
+.tags*
 *.egg-info
 *.pyc
 *~
