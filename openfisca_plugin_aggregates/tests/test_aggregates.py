@@ -25,14 +25,14 @@
 
 import openfisca_france
 from openfisca_france_data.surveys import SurveyScenario
-from openfisca_survey_manager.surveys import SurveyCollection
+from openfisca_survey_manager.survey_collections import SurveyCollection
 from openfisca_plugin_aggregates.aggregates import Aggregates
 
 
 def create_survey_scenario(year = None):
     assert year is not None
     openfisca_survey_collection = SurveyCollection.load(collection = "openfisca")
-    openfisca_survey = openfisca_survey_collection.surveys["openfisca_data_{}".format(year)]
+    openfisca_survey = openfisca_survey_collection.get_survey("openfisca_data_{}".format(year))
     input_data_frame = openfisca_survey.get_values(table = "input")
     input_data_frame.reset_index(inplace = True)
     assert "wprm" in input_data_frame.columns
@@ -40,13 +40,13 @@ def create_survey_scenario(year = None):
     tax_benefit_system = TaxBenefitSystem()
     survey_scenario = SurveyScenario().init_from_data_frame(
         input_data_frame = input_data_frame,
-        tax_benefit_system= tax_benefit_system,
+        tax_benefit_system = tax_benefit_system,
         year = year,
         )
     return survey_scenario
 
 
-def test_aggregates(year = 2006):
+def test_aggregates(year = 2009):
     survey_scenario = create_survey_scenario(year)
     aggregates = Aggregates()
     aggregates.set_survey_scenario(survey_scenario)
