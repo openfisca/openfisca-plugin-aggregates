@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import openfisca_france
+import openfisca_france_data
 from openfisca_france_data.surveys import SurveyScenario
 from openfisca_survey_manager.survey_collections import SurveyCollection
 from openfisca_plugin_aggregates.aggregates import Aggregates
@@ -36,7 +36,7 @@ def create_survey_scenario(year = None):
     input_data_frame = openfisca_survey.get_values(table = "input")
     input_data_frame.reset_index(inplace = True)
     assert "wprm" in input_data_frame.columns
-    TaxBenefitSystem = openfisca_france.init_country()
+    TaxBenefitSystem = openfisca_france_data.init_country()
     tax_benefit_system = TaxBenefitSystem()
     survey_scenario = SurveyScenario().init_from_data_frame(
         input_data_frame = input_data_frame,
@@ -50,8 +50,7 @@ def test_aggregates(year = 2009):
     survey_scenario = create_survey_scenario(year)
     aggregates = Aggregates(survey_scenario = survey_scenario)
     aggregates.compute_aggregates()
-    print aggregates.aggr_frame
-    aggregates.compute()
+    print aggregates.base_data_frame
 
 
 if __name__ == '__main__':
