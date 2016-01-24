@@ -276,7 +276,7 @@ class Aggregates(object):
 
     def save_table(self, directory = None, filename = None, table_format = None):
         '''
-        Saves the table to some format
+        Saves the table to csv or xls (default) format 
         '''
         now = datetime.now()
         if table_format is None:
